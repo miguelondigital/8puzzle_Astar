@@ -1,4 +1,5 @@
 import random
+import sys
 
 #define node for A* search
 class Node:
@@ -27,7 +28,7 @@ class Node:
         return self.g + self.h
 
 
-        
+
 
 
 # class board
@@ -42,6 +43,26 @@ def num_misplaced():
 def manhattan_distance():
     sum = 0
 
+
+#function to handle manual input
+#enables us to read manual boards in the multi line format
+# press enter followed by command d or contorl d to conclude input
+def manual_input():
+    msg = sys.stdin.readlines()
+    #create new board to append values to
+    new_board = [[0]*3 for i in range (3)]
+    row = 0
+    for line in msg:
+        col = 0
+        line = line.split()
+        for num in line:
+            num = int(num)
+            new_board [row][col] = num
+            col += 1
+        row += 1
+    return new_board
+        
+
 def main():
     # main entry point of the script
     print('CS 4200 Project 1\n')
@@ -54,11 +75,12 @@ def main():
         print("[3] - Exit")
 
         selection = int(input())
-
+        unsolved = [[0]*3 for i in range (3)]
         if selection == 1:
             print("randomizing")
         elif selection == 2:
             print("Input Board: ")
+            unsolved = manual_input()   
         elif selection == 3:
             print("Terminating")
             active = False
@@ -69,8 +91,5 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
-
-
 
 
