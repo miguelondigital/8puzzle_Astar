@@ -1,18 +1,18 @@
 import random
 import sys
+import heapq
 
 #define goal state
-GOAL = [[0,1,2][3,4,5],[6,7,8]]
+GOAL = [[0,1,2],[3,4,5],[6,7,8]]
+
 
 #define node for A* search
 class Node:
-    def __init__(self, puzzle, board, heuristic, parent = None, action= None):
-        self.puzzle = puzzle
+    def __init__(self, board, heuristic, parent = None, action= None):
         self.parent = parent
         self.action = action
         self.board = board
         self.heuristic = heuristic
-
         #define g(n) as cost so far
         if( self.parent != None):
             self.g = parent.g + 1
@@ -26,24 +26,33 @@ class Node:
         else:
             h_val = manhattan_distance(self.board)
         return h_val
-            
+     
         
     #calculate f(n) = g(n) + h(n)
     def f(self):
-        return self.g + self.h
+        return self.g + self.h()
 
 #function to calculate heuristic 1
 def num_misplaced(board):
     total = 0
     for i in range(3):
         for j in range(3):
-            if board[i][j] != GOAL[i][j]:
+            current = board[i][j]
+            if current != GOAL[i][j] and current!= 0:
                 total += 1
     return total
 
 #function to calculate heuristic 2
-def manhattan_distance():
-    sum = 0
+def manhattan_distance(board):
+    distance = 0
+    for i in range(3):
+        for j in range(3):
+            val = board[i][j]
+            if val != 0:
+                goal_row = val // 3
+                goal_col = val % 3
+                distance += abs(i - goal_row) + abs(j - goal_col)
+    return distance
 
 
 #function to handle manual input
@@ -75,7 +84,6 @@ def display_board(board):
 
 #function to locate the index of the empty slot in puzzle
 def find_blank(board):
-    index = (0,0)
     for i in range(3):
         for j in range(3):
             if board[i][j] == 0:
@@ -136,6 +144,57 @@ def spawn_children(board, moves, empty_index):
     
     return children
 
+#convert 2D array representation of board into a hashable element and return
+def hash_board(board):
+    #convert array into tuple of tuples (hashable)
+    tuple_board = tuple(map(tuple,board))
+    hash_board = hash(tuple_board)
+    return hash_board
+
+#main A* method for informed search
+def a_star(node):
+    current_board = node.board 
+    search_cost = 0
+    frontier = []
+    explored_set = set()
+    #pass in parent node into frontier
+    heapq.heappush(frontier,(node.f(), node))
+    search_cost += 1
+    #begin A* loop
+    while (len(frontier) != 0):
+        ntuple = heapq.heappop(frontier)
+        h_val = ntuple[0]
+        parent_node = ntuple[1]
+        parent_board = parent_node.board
+        parent_hash = hash_board(parent_board)
+        explored_set.add(parent_hash)
+
+        #check if this board is a success before proceeding
+        incorrect_placements = num_misplaced(parent_board)
+        if incorrect_placements == 0:
+            print("succesful")
+            return (parent_node, search_cost)
+
+        blank = find_blank(parent_board)
+        moves = find_moves(blank)
+        children = spawn_children(parent_board,moves,blank)
+
+        for child in children:
+            child_board = child[1]
+            #check if child in explored set
+            child_id = hash_board(child_board)
+
+            if child_id in explored_set:
+                continue
+            else:
+                #heuristic
+                search_cost += 1
+                hst = parent_node.heuristic
+                child_node = Node(child_board,hst,parent_node, child[0])
+                heapq.heappush(frontier,(child_node.f(), child_node))
+                explored_set.add(child_id)
+
+
 
 def main():
     # main entry point of the script
@@ -146,7 +205,8 @@ def main():
         print("Select Input Method:")
         print("[1] - Random Board")
         print("[2] - Manual input")
-        print("[3] - Exit")
+        print("[3] - 100 Case Statistical test")
+        print("[4] - Exit")
 
         selection = int(input())
         unsolved = [[0]*3 for i in range (3)]
@@ -160,11 +220,12 @@ def main():
             empty = find_blank(unsolved)
             possible_m = find_moves(empty)
             test_list = spawn_children(unsolved,possible_m,empty)
-            
-                
-            
-
+            print(manhattan_distance(unsolved))
+        
         elif selection == 3:
+            print("will do later")
+
+        elif selection == 4:
             print("Terminating")
             active = False
 
