@@ -5,7 +5,6 @@ import heapq
 #define goal state
 GOAL = [[0,1,2],[3,4,5],[6,7,8]]
 
-
 #define node for A* search
 class Node:
     def __init__(self, board, heuristic, parent = None, action= None):
@@ -27,7 +26,6 @@ class Node:
             h_val = manhattan_distance(self.board)
         return h_val
      
-        
     #calculate f(n) = g(n) + h(n)
     def f(self):
         return self.g + self.h()
@@ -115,33 +113,27 @@ def spawn_children(board, moves, empty_index):
         for i in range(3):
             for j in range(3):
                 new_board[i][j] = board[i][j]
-        move = ""
         if item == "left":
-            move = "left"
             swap_placeholder = board[empty_index[0]][empty_index[1]-1]
             new_board[empty_index[0]][empty_index[1]] = swap_placeholder
             new_board[empty_index[0]][empty_index[1]-1] = 0
         
         if item == "right":
-            move = "right"
             swap_placeholder = board[empty_index[0]][empty_index[1]+1]
             new_board[empty_index[0]][empty_index[1]] = swap_placeholder
             new_board[empty_index[0]][empty_index[1]+1] = 0
 
         if item == "up":
-            move = "up"
             swap_placeholder = board[empty_index[0]-1][empty_index[1]]
             new_board[empty_index[0]][empty_index[1]] = swap_placeholder
             new_board[empty_index[0]-1][empty_index[1]] = 0
         
         if item == "down":
-            move = "down"
             swap_placeholder = board[empty_index[0]+1][empty_index[1]]
             new_board[empty_index[0]][empty_index[1]] = swap_placeholder
             new_board[empty_index[0]+1][empty_index[1]] = 0
-        move_pair = (move, new_board)
-        children.append(move_pair)
-    
+
+        children.append((item, new_board))
     return children
 
 #convert 2D array representation of board into a hashable element and return
@@ -151,50 +143,95 @@ def hash_board(board):
     hash_board = hash(tuple_board)
     return hash_board
 
+#returns solution path from goal node back to beginning
+def get_path(node):
+    path = []
+    while node.parent is not None:
+        path.append(node.board)
+        node = node.parent
+    path.reverse()
+    return path
+
 #main A* method for informed search
 def a_star(node):
-    current_board = node.board 
     search_cost = 0
+    #counter will serve as a tiebraker in the event of an equivalent f() for two nodes
+    counter = 0
     frontier = []
     explored_set = set()
+
     #pass in parent node into frontier
-    heapq.heappush(frontier,(node.f(), node))
-    search_cost += 1
+    heapq.heappush(frontier,(node.f(), counter, node))
+    counter += 1
+
     #begin A* loop
     while (len(frontier) != 0):
         ntuple = heapq.heappop(frontier)
-        h_val = ntuple[0]
-        parent_node = ntuple[1]
-        parent_board = parent_node.board
-        parent_hash = hash_board(parent_board)
-        explored_set.add(parent_hash)
+        current_node = ntuple[2]
+        current_board = current_node.board
+        board_id = hash_board(current_board)
+
+        #skip board if already in explored
+        if board_id in explored_set:
+            continue
+
+        #mark as explored and add to search cost
+        explored_set.add(board_id)
+        search_cost += 1
 
         #check if this board is a success before proceeding
-        incorrect_placements = num_misplaced(parent_board)
-        if incorrect_placements == 0:
-            print("succesful")
-            return (parent_node, search_cost)
-
-        blank = find_blank(parent_board)
+        if current_board == GOAL:
+            return(current_node, search_cost)
+        
+        #expand children
+        blank = find_blank(current_board)
         moves = find_moves(blank)
-        children = spawn_children(parent_board,moves,blank)
+        children = spawn_children(current_board, moves ,blank)
 
         for child in children:
+            child_move = child[0]
             child_board = child[1]
             #check if child in explored set
             child_id = hash_board(child_board)
 
-            if child_id in explored_set:
-                continue
-            else:
-                #heuristic
-                search_cost += 1
-                hst = parent_node.heuristic
-                child_node = Node(child_board,hst,parent_node, child[0])
-                heapq.heappush(frontier,(child_node.f(), child_node))
-                explored_set.add(child_id)
+            if child_id not in explored_set:
+                child_node = Node(child_board, current_node.heuristic, current_node, child_move)
+                heapq.heappush(frontier,(child_node.f(), counter, child_node))
+                counter += 1
+    
+    #reach this point if no solution is found
+    print("no solution found")
+    return None
 
+#function to randomize board:
+def randomizer(board):
+    #placeholder method
+    random_board = board
+    return random_board
 
+#function to select heuristic and display results
+def menu_print(board):
+    selected_h = int(input("Select H Function: \n[1] H1\n[2] H2\n"))
+    if selected_h == 1:
+        node = Node(board,1)
+    else:
+        node = Node(board,2)
+
+    result = a_star(node)
+    if result:
+        path = get_path(result[0])
+        cost = result[1]
+        print(f'Search cost: {cost}')
+        print(f'Solution depth:{len(path)}')
+        print("Path:")
+        step_index = 1
+        for item in path:
+            print(f'Step {step_index}:')
+            display_board(item)
+            print("\n")
+            step_index += 1
+    else:
+        print("Board is not solveable")
 
 def main():
     # main entry point of the script
@@ -209,21 +246,35 @@ def main():
         print("[4] - Exit")
 
         selection = int(input())
-        unsolved = [[0]*3 for i in range (3)]
         if selection == 1:
-            print("randomizing")
+            random_b = randomizer(GOAL)
+            menu_print(random_b)
+            
 
         elif selection == 2:
             print("Input Board: ")
-            unsolved = manual_input() 
-            # display_board(unsolved)
-            empty = find_blank(unsolved)
-            possible_m = find_moves(empty)
-            test_list = spawn_children(unsolved,possible_m,empty)
-            print(manhattan_distance(unsolved))
+            unsolved = manual_input()
+            menu_print(unsolved)       
         
         elif selection == 3:
-            print("will do later")
+            total_cost1 = 0
+            total_cost2 = 0
+            print("Case# | H1 Cost | H2 COST | H1 Time | H2 Time")
+            for i in range(100):
+                random_board = randomizer(GOAL)
+                h1_node = Node(random_board,1)
+                h2_node = Node(random_board,2)
+
+                sol1 = a_star(h1_node)
+                sol2 = a_star(h2_node)
+
+                cost1 = sol1[1]
+                cost2 = sol2[1]
+
+                print(f'{i+1} | {cost1} | {cost2} | time1 | time2 ')
+                total_cost1 += cost1
+                total_cost2 += cost2
+
 
         elif selection == 4:
             print("Terminating")
@@ -231,8 +282,6 @@ def main():
 
         else:
             print("Improper input, please try again: ")
-
-
 
 if __name__ == "__main__":
     main()
