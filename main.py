@@ -1,6 +1,7 @@
 import random
 import sys
 import heapq
+import time
 
 #define goal state
 GOAL = [[0,1,2],[3,4,5],[6,7,8]]
@@ -203,11 +204,34 @@ def a_star(node):
     print("no solution found")
     return None
 
+#function to determine whether or not board can be solved
+def is_solveable(board):
+    flat_board = []
+    for i in range(3):
+        for j in range(3):
+            if (board[i][j] != 0):
+                flat_board.append(board[i][j])
+    inversions = 0
+    for i in range(len(flat_board)):
+        for j in range(i+1,len(flat_board)):
+            if flat_board[i] > flat_board[j]:
+                inversions += 1
+    
+    return inversions % 2 == 0
+
 #function to randomize board:
-def randomizer(board):
-    #placeholder method
-    random_board = board
-    return random_board
+def randomizer():
+    while True:
+        tiles = list(range(9))
+        random.shuffle(tiles)
+        board = [[0]*3 for i in range(3)]
+        index = 0
+        for i in range(3):
+            for j in range(3):
+                board[i][j] = tiles[index]
+                index += 1
+        if is_solveable(board):
+            return board
 
 #function to select heuristic and display results
 def menu_print(board):
@@ -247,33 +271,48 @@ def main():
 
         selection = int(input())
         if selection == 1:
-            random_b = randomizer(GOAL)
+            random_b = randomizer()
+            print("Random Board Selected: ")
+            display_board(random_b)
             menu_print(random_b)
             
 
         elif selection == 2:
             print("Input Board: ")
             unsolved = manual_input()
-            menu_print(unsolved)       
+            if is_solveable(unsolved):
+                menu_print(unsolved)
+            else:
+                print("This Board is not solveable")       
         
         elif selection == 3:
             total_cost1 = 0
             total_cost2 = 0
-            print("Case# | H1 Cost | H2 COST | H1 Time | H2 Time")
+            print("# | H1 Cost | H2 Cost | H1 Time | H2 Time")
             for i in range(100):
-                random_board = randomizer(GOAL)
+                random_board = randomizer()
                 h1_node = Node(random_board,1)
                 h2_node = Node(random_board,2)
 
+                t1_start = time.time()
                 sol1 = a_star(h1_node)
+                t1_end = time.time()
+                t1 = t1_end - t1_start
+
+                t2_start = time.time()
                 sol2 = a_star(h2_node)
+                t2_end = time.time()
+                t2 = t2_end - t2_start
 
                 cost1 = sol1[1]
                 cost2 = sol2[1]
 
-                print(f'{i+1} | {cost1} | {cost2} | time1 | time2 ')
+                print(f'{i+1} | {cost1} | {cost2} | {t1:.4f}s | {t2:.4f}s ')
                 total_cost1 += cost1
                 total_cost2 += cost2
+
+            print(f'Average H1 Cost: {total_cost1 / 100}')
+            print(f'Average H2 Cost: {total_cost2 / 100}')
 
 
         elif selection == 4:
